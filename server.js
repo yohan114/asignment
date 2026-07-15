@@ -8,7 +8,7 @@ const mammoth = require('mammoth');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 6393;
+const PORT = process.env.PORT || 9719;
 
 // Configure CORS
 app.use(cors());
