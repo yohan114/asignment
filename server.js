@@ -407,7 +407,7 @@ app.put('/api/assignments/:id', authenticate, (req, res) => {
   // Permission Checks:
   // Writers and Admins can update status, tasks, and submissions
   // Creators and Admins can update core text fields (code, title, subject, description, dueDate)
-  const isWriterAction = 'status' in updates || 'tasks' in updates || 'submissions' in updates || 'priceReceived' in updates;
+  const isWriterAction = 'status' in updates || 'tasks' in updates || 'submissions' in updates;
   const isCreatorAction = 'code' in updates || 'title' in updates || 'subject' in updates || 'description' in updates || 'dueDate' in updates || 'estimatedEffort' in updates || 'price' in updates || 'priceReceived' in updates;
 
   const role = req.user.role;
