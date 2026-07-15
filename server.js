@@ -335,7 +335,7 @@ app.get('/api/assignments', authenticate, (req, res) => {
 
 // Create new assignment (Admin & Creator Only)
 app.post('/api/assignments', authenticate, authorize(['admin', 'creator']), upload.array('files'), (req, res) => {
-  const { code, title, subject, description, dueDate, estimatedEffort, price, tasks, attachments } = req.body;
+  const { code, title, subject, description, dueDate, estimatedEffort, price, priceReceived, tasks, attachments } = req.body;
   const files = req.files || [];
   
   const assignments = readDB();
@@ -381,6 +381,7 @@ app.post('/api/assignments', authenticate, authorize(['admin', 'creator']), uplo
       completed: typeof t === 'string' ? false : !!t.completed
     })),
     price: price ? Number(price) : null,
+    priceReceived: priceReceived ? Number(priceReceived) : 0,
     attachments: combinedAttachments,
     submissions: [],
     createdAt: new Date().toISOString()
@@ -406,8 +407,8 @@ app.put('/api/assignments/:id', authenticate, (req, res) => {
   // Permission Checks:
   // Writers and Admins can update status, tasks, and submissions
   // Creators and Admins can update core text fields (code, title, subject, description, dueDate)
-  const isWriterAction = 'status' in updates || 'tasks' in updates || 'submissions' in updates;
-  const isCreatorAction = 'code' in updates || 'title' in updates || 'subject' in updates || 'description' in updates || 'dueDate' in updates || 'estimatedEffort' in updates || 'price' in updates;
+  const isWriterAction = 'status' in updates || 'tasks' in updates || 'submissions' in updates || 'priceReceived' in updates;
+  const isCreatorAction = 'code' in updates || 'title' in updates || 'subject' in updates || 'description' in updates || 'dueDate' in updates || 'estimatedEffort' in updates || 'price' in updates || 'priceReceived' in updates;
 
   const role = req.user.role;
   if (role === 'writer' && isCreatorAction) {

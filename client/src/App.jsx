@@ -94,11 +94,14 @@ export default function App() {
   const [manualTitle, setManualTitle] = useState('');
   const [manualSubject, setManualSubject] = useState('');
   const [manualPrice, setManualPrice] = useState('');
+  const [manualPriceReceived, setManualPriceReceived] = useState('');
   const [manualDesc, setManualDesc] = useState('');
   const [manualDueDate, setManualDueDate] = useState('');
   const [manualEffort, setManualEffort] = useState('Medium');
   const [manualTasksText, setManualTasksText] = useState('');
   const [manualFiles, setManualFiles] = useState([]); 
+
+  const [activeView, setActiveView] = useState('kanban'); // 'kanban' | 'dashboard' 
 
   // Check login on load
   useEffect(() => {
@@ -477,6 +480,7 @@ export default function App() {
     formData.append('dueDate', manualDueDate || '');
     formData.append('estimatedEffort', manualEffort);
     formData.append('price', manualPrice || '');
+    formData.append('priceReceived', manualPriceReceived || '0');
     formData.append('tasks', JSON.stringify(tasksArray));
     
     manualFiles.forEach(file => {
@@ -497,6 +501,7 @@ export default function App() {
         setManualTitle('');
         setManualSubject('');
         setManualPrice('');
+        setManualPriceReceived('');
         setManualDesc('');
         setManualDueDate('');
         setManualEffort('Medium');
@@ -617,6 +622,7 @@ export default function App() {
       dueDate: selectedAssignment.dueDate || '',
       estimatedEffort: selectedAssignment.estimatedEffort,
       price: selectedAssignment.price || '',
+      priceReceived: selectedAssignment.priceReceived || '0',
       description: selectedAssignment.description
     });
   };
@@ -677,6 +683,36 @@ export default function App() {
   const submittedPrice = assignments.filter(a => a.status === 'Submitted').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const recorrectionPrice = assignments.filter(a => a.status === 'Re-correction').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const pendingPrice = assignments.filter(a => a.status === 'Todo' || a.status === 'In Progress').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+
+  const getMonthlyIncome = () => {
+    const monthlyData = {};
+    assignments.forEach(a => {
+      if (!a.createdAt) return;
+      const date = new Date(a.createdAt);
+      const monthName = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      const sortKey = date.getFullYear() * 100 + date.getMonth();
+      
+      if (!monthlyData[monthName]) {
+        monthlyData[monthName] = {
+          monthName,
+          sortKey,
+          agreed: 0,
+          received: 0,
+          count: 0,
+          completedCount: 0
+        };
+      }
+      
+      monthlyData[monthName].agreed += (Number(a.price) || 0);
+      monthlyData[monthName].received += (Number(a.priceReceived) || 0);
+      monthlyData[monthName].count += 1;
+      if (a.status === 'Submitted') {
+        monthlyData[monthName].completedCount += 1;
+      }
+    });
+    
+    return Object.values(monthlyData).sort((a, b) => b.sortKey - a.sortKey);
+  };
 
   // --- RENDERING: LOGIN SCREEN (if not logged in) ---
   if (!currentUser) {
@@ -836,8 +872,202 @@ export default function App() {
         </div>
       )}
 
+      {/* Workspace View Selector */}
+      <div className="workspace-tabs-row glass-panel" style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1.25rem', borderRadius: '16px', marginBottom: '1.5rem', border: '1px solid var(--panel-border)', background: 'rgba(18, 13, 35, 0.3)' }}>
+        <button 
+          type="button" 
+          className={`workspace-tab-btn ${activeView === 'kanban' ? 'active' : ''}`}
+          onClick={() => setActiveView('kanban')}
+          style={{ 
+            background: activeView === 'kanban' ? 'linear-gradient(135deg, var(--color-purple) 0%, var(--color-blue) 100%)' : 'transparent', 
+            border: '1px solid',
+            borderColor: activeView === 'kanban' ? 'transparent' : 'var(--panel-border)',
+            color: '#fff', 
+            padding: '0.6rem 1.5rem', 
+            borderRadius: '12px', 
+            fontWeight: '600', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem', 
+            transition: 'all 0.2s',
+            boxShadow: activeView === 'kanban' ? '0 0 12px rgba(140, 70, 255, 0.3)' : 'none'
+          }}
+        >
+          <span>📋 Kanban Workspace</span>
+        </button>
+        <button 
+          type="button" 
+          className={`workspace-tab-btn ${activeView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveView('dashboard')}
+          style={{ 
+            background: activeView === 'dashboard' ? 'linear-gradient(135deg, var(--color-purple) 0%, var(--color-blue) 100%)' : 'transparent', 
+            border: '1px solid',
+            borderColor: activeView === 'dashboard' ? 'transparent' : 'var(--panel-border)',
+            color: '#fff', 
+            padding: '0.6rem 1.5rem', 
+            borderRadius: '12px', 
+            fontWeight: '600', 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem', 
+            transition: 'all 0.2s',
+            boxShadow: activeView === 'dashboard' ? '0 0 12px rgba(140, 70, 255, 0.3)' : 'none'
+          }}
+        >
+          <span>📊 Financial Dashboard & KPIs</span>
+        </button>
+      </div>
+
       {/* Layout Panels */}
-      <main className="main-content">
+      {activeView === 'dashboard' ? (
+        <section className="glass-panel earnings-dashboard-panel" style={{ width: '100%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          {/* Dashboard Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-main)', margin: 0 }}>Earnings & KPIs Dashboard</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '0.25rem 0 0' }}>Real-time earnings tracking, balance statements, and monthly-wise income distributions.</p>
+            </div>
+            <button className="btn btn-secondary" onClick={() => fetchAssignments()}>
+              <RefreshCw size={14} />
+              <span>Refresh Metrics</span>
+            </button>
+          </div>
+
+          {/* KPI Metrics Summary Row */}
+          <div className="form-grid-2" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+            <div className="stat-card total" style={{ padding: '1.5rem', border: '1px solid var(--panel-border)' }}>
+              <div className="stat-info">
+                <span className="stat-value" style={{ fontSize: '1.75rem' }}>${totalPrice.toLocaleString()}</span>
+                <span className="stat-label" style={{ fontWeight: '600', textTransform: 'uppercase', fontSize: '0.75rem' }}>Total Agreed Value</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>From {totalCount} projects</span>
+              </div>
+            </div>
+
+            <div className="stat-card done" style={{ padding: '1.5rem', border: '1px solid rgba(0, 255, 135, 0.2)' }}>
+              <div className="stat-info">
+                <span className="stat-value" style={{ fontSize: '1.75rem', color: 'var(--color-emerald)' }}>
+                  ${assignments.reduce((sum, a) => sum + (Number(a.priceReceived) || 0), 0).toLocaleString()}
+                </span>
+                <span className="stat-label" style={{ fontWeight: '600', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--color-emerald)' }}>Total Payments Collected</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {((assignments.reduce((sum, a) => sum + (Number(a.priceReceived) || 0), 0) / (totalPrice || 1)) * 100).toFixed(1)}% recovery rate
+                </span>
+              </div>
+            </div>
+
+            <div className="stat-card progress" style={{ padding: '1.5rem', border: '1px solid rgba(255, 74, 110, 0.2)' }}>
+              <div className="stat-info">
+                <span className="stat-value" style={{ fontSize: '1.75rem', color: 'var(--color-rose)' }}>
+                  ${(totalPrice - assignments.reduce((sum, a) => sum + (Number(a.priceReceived) || 0), 0)).toLocaleString()}
+                </span>
+                <span className="stat-label" style={{ fontWeight: '600', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--color-rose)' }}>Outstanding Receivables</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Agreed Payout - Collected</span>
+              </div>
+            </div>
+
+            <div className="stat-card todo" style={{ padding: '1.5rem', border: '1px solid rgba(0, 168, 255, 0.2)' }}>
+              <div className="stat-info">
+                <span className="stat-value" style={{ fontSize: '1.75rem', color: 'var(--color-cyan)' }}>
+                  ${pendingPrice.toLocaleString()}
+                </span>
+                <span className="stat-label" style={{ fontWeight: '600', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--color-cyan)' }}>Work-In-Progress Value</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{todoCount + inProgressCount} active projects</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="form-grid-2">
+            
+            {/* Left side: Monthly-wise breakdown */}
+            <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid var(--panel-border)' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>📆 Monthly Income Breakdown</h3>
+              
+              {getMonthlyIncome().length === 0 ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No monthly distribution data available.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {getMonthlyIncome().map((month, idx) => {
+                    const percent = Math.min(100, Math.round((month.received / (month.agreed || 1)) * 100));
+                    return (
+                      <div key={idx} style={{ paddingBottom: '1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
+                          <strong style={{ color: 'var(--text-main)' }}>{month.monthName}</strong>
+                          <span style={{ color: 'var(--text-secondary)' }}>{month.count} projects ({month.completedCount} done)</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                          <span>Payout: <strong>${month.agreed.toLocaleString()}</strong></span>
+                          <span>Collected: <strong style={{ color: 'var(--color-emerald)' }}>${month.received.toLocaleString()}</strong></span>
+                        </div>
+                        <div className="card-progress-track" style={{ height: '6px' }}>
+                          <div 
+                            className="card-progress-fill" 
+                            style={{ 
+                              width: `${percent}%`, 
+                              background: percent === 100 ? 'var(--color-emerald)' : 'linear-gradient(90deg, var(--color-cyan) 0%, var(--color-emerald) 100%)' 
+                            }}
+                          ></div>
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'right', marginTop: '0.15rem' }}>
+                          {percent}% Recovered
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right side: Project Financial Summary Table */}
+            <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid var(--panel-border)', overflowX: 'auto' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>📂 Projects Billing Ledger</h3>
+              
+              <table className="users-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--panel-border)' }}>
+                    <th style={{ textAlign: 'left', padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }}>Code</th>
+                    <th style={{ textAlign: 'left', padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }}>Title</th>
+                    <th style={{ textAlign: 'right', padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }}>Agreed</th>
+                    <th style={{ textAlign: 'right', padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }}>Received</th>
+                    <th style={{ textAlign: 'right', padding: '0.6rem 0.8rem', color: 'var(--text-secondary)' }}>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignments.map(a => {
+                    const balance = (Number(a.price) || 0) - (Number(a.priceReceived) || 0);
+                    return (
+                      <tr 
+                        key={a.id} 
+                        style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', cursor: 'pointer' }}
+                        className="ledger-row"
+                        onClick={() => setSelectedAssignment(a)}
+                      >
+                        <td style={{ padding: '0.6rem 0.8rem' }}><span className="tag-code" style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem' }}>{a.code}</span></td>
+                        <td style={{ padding: '0.6rem 0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>{a.title}</td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>${(Number(a.price) || 0).toLocaleString()}</td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: 'var(--color-emerald)' }}>${(Number(a.priceReceived) || 0).toLocaleString()}</td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: balance > 0 ? 'var(--color-rose)' : 'var(--text-secondary)' }}>
+                          {balance > 0 ? `$${balance.toLocaleString()}` : '$0'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {assignments.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No assignments recorded yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </section>
+      ) : (
+        <main className="main-content">
         
         {/* Creator panel (Left side - visible only for Admin and Creator) */}
         <section className="creator-panel glass-panel">
@@ -1137,7 +1367,8 @@ export default function App() {
           </div>
         </section>
 
-      </main>
+        </main>
+      )}
 
       {/* --- MODALS --- */}
 
@@ -1416,15 +1647,27 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="section-label">Assignment Price / Payout (USD)</label>
-                  <input 
-                    type="number" 
-                    className="form-control" 
-                    placeholder="e.g. 150" 
-                    value={manualPrice}
-                    onChange={(e) => setManualPrice(e.target.value)}
-                  />
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="section-label">Agreed Price (USD)</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      placeholder="e.g. 150" 
+                      value={manualPrice}
+                      onChange={(e) => setManualPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="section-label">Payment Received (USD)</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      placeholder="e.g. 50" 
+                      value={manualPriceReceived}
+                      onChange={(e) => setManualPriceReceived(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -1573,7 +1816,7 @@ export default function App() {
                   <div className="meta-item">
                     <span style={{ fontSize: '1.2rem' }}>💰</span>
                     <div>
-                      <span className="meta-lbl">Price / Payout</span>
+                      <span className="meta-lbl">Agreed Price</span>
                       {editingFields ? (
                         <input 
                           type="number" 
@@ -1584,6 +1827,25 @@ export default function App() {
                       ) : (
                         <span className="meta-val" style={{ color: 'var(--color-emerald)' }}>
                           {selectedAssignment.price ? `$${Number(selectedAssignment.price).toLocaleString()}` : 'Not Set'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="meta-item">
+                    <span style={{ fontSize: '1.2rem' }}>💳</span>
+                    <div>
+                      <span className="meta-lbl">Payment Received</span>
+                      {editingFields ? (
+                        <input 
+                          type="number" 
+                          className="form-control inline-edit" 
+                          value={editingFields.priceReceived} 
+                          onChange={(e) => setEditingFields({...editingFields, priceReceived: e.target.value})} 
+                        />
+                      ) : (
+                        <span className="meta-val" style={{ color: 'var(--color-cyan)' }}>
+                          {selectedAssignment.priceReceived ? `$${Number(selectedAssignment.priceReceived).toLocaleString()}` : '$0'}
                         </span>
                       )}
                     </div>

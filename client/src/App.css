@@ -1694,3 +1694,13 @@ textarea.form-control {
   transform: none;
 }
 
+/* Ledger Row Hover effect */
+.ledger-row {
+  transition: all 0.2s ease-in-out;
+}
+
+.ledger-row:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+
