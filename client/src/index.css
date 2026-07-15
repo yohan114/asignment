@@ -1,0 +1,21 @@
+/* Simple global reset */
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #05040a;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
