@@ -93,6 +93,7 @@ export default function App() {
   const [manualCode, setManualCode] = useState('');
   const [manualTitle, setManualTitle] = useState('');
   const [manualSubject, setManualSubject] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
   const [manualDesc, setManualDesc] = useState('');
   const [manualDueDate, setManualDueDate] = useState('');
   const [manualEffort, setManualEffort] = useState('Medium');
@@ -475,6 +476,7 @@ export default function App() {
     formData.append('description', manualDesc);
     formData.append('dueDate', manualDueDate || '');
     formData.append('estimatedEffort', manualEffort);
+    formData.append('price', manualPrice || '');
     formData.append('tasks', JSON.stringify(tasksArray));
     
     manualFiles.forEach(file => {
@@ -494,6 +496,7 @@ export default function App() {
         setManualCode('');
         setManualTitle('');
         setManualSubject('');
+        setManualPrice('');
         setManualDesc('');
         setManualDueDate('');
         setManualEffort('Medium');
@@ -613,6 +616,7 @@ export default function App() {
       subject: selectedAssignment.subject,
       dueDate: selectedAssignment.dueDate || '',
       estimatedEffort: selectedAssignment.estimatedEffort,
+      price: selectedAssignment.price || '',
       description: selectedAssignment.description
     });
   };
@@ -668,6 +672,11 @@ export default function App() {
   const recorrectionCount = assignments.filter(a => a.status === 'Re-correction').length;
   const inProgressCount = assignments.filter(a => a.status === 'In Progress').length;
   const todoCount = assignments.filter(a => a.status === 'Todo').length;
+
+  const totalPrice = assignments.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+  const submittedPrice = assignments.filter(a => a.status === 'Submitted').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+  const recorrectionPrice = assignments.filter(a => a.status === 'Re-correction').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+  const pendingPrice = assignments.filter(a => a.status === 'Todo' || a.status === 'In Progress').reduce((sum, a) => sum + (Number(a.price) || 0), 0);
 
   // --- RENDERING: LOGIN SCREEN (if not logged in) ---
   if (!currentUser) {
@@ -791,29 +800,29 @@ export default function App() {
         <div className="stat-card total">
           <BarChart3 size={24} className="stat-icon" />
           <div className="stat-info">
-            <span className="stat-value">{totalCount}</span>
-            <span className="stat-label">Total Assignments</span>
+            <span className="stat-value">${totalPrice.toLocaleString()}</span>
+            <span className="stat-label">{totalCount} Total Assignments</span>
           </div>
         </div>
         <div className="stat-card todo">
           <Clock size={24} className="stat-icon" />
           <div className="stat-info">
-            <span className="stat-value">{todoCount + inProgressCount}</span>
-            <span className="stat-label">Pending Tasks</span>
+            <span className="stat-value">${pendingPrice.toLocaleString()}</span>
+            <span className="stat-label">{todoCount + inProgressCount} Pending Tasks</span>
           </div>
         </div>
         <div className="stat-card progress" style={{ borderColor: 'rgba(255, 153, 0, 0.2)' }}>
           <AlertCircle size={24} className="stat-icon" style={{ color: 'var(--color-amber)', background: 'rgba(255, 153, 0, 0.1)' }} />
           <div className="stat-info">
-            <span className="stat-value" style={{ color: 'var(--color-amber)' }}>{recorrectionCount}</span>
-            <span className="stat-label">Re-correction</span>
+            <span className="stat-value" style={{ color: 'var(--color-amber)' }}>${recorrectionPrice.toLocaleString()}</span>
+            <span className="stat-label">{recorrectionCount} Re-corrections</span>
           </div>
         </div>
         <div className="stat-card done" style={{ borderColor: 'rgba(0, 255, 135, 0.2)' }}>
           <CheckCircle2 size={24} className="stat-icon" style={{ color: 'var(--color-emerald)', background: 'rgba(0, 255, 135, 0.1)' }} />
           <div className="stat-info">
-            <span className="stat-value" style={{ color: 'var(--color-emerald)' }}>{submittedCount}</span>
-            <span className="stat-label">Submitted</span>
+            <span className="stat-value" style={{ color: 'var(--color-emerald)' }}>${submittedPrice.toLocaleString()}</span>
+            <span className="stat-label">{submittedCount} Submissions</span>
           </div>
         </div>
       </section>
@@ -1408,6 +1417,17 @@ export default function App() {
                 </div>
 
                 <div className="form-group">
+                  <label className="section-label">Assignment Price / Payout (USD)</label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    placeholder="e.g. 150" 
+                    value={manualPrice}
+                    onChange={(e) => setManualPrice(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
                   <label className="section-label">Tasks / Deliverables Checklist (one per line)</label>
                   <textarea 
                     className="form-control" 
@@ -1546,6 +1566,25 @@ export default function App() {
                         />
                       ) : (
                         <span className="meta-val">{selectedAssignment.estimatedEffort || 'Medium'}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="meta-item">
+                    <span style={{ fontSize: '1.2rem' }}>💰</span>
+                    <div>
+                      <span className="meta-lbl">Price / Payout</span>
+                      {editingFields ? (
+                        <input 
+                          type="number" 
+                          className="form-control inline-edit" 
+                          value={editingFields.price} 
+                          onChange={(e) => setEditingFields({...editingFields, price: e.target.value})} 
+                        />
+                      ) : (
+                        <span className="meta-val" style={{ color: 'var(--color-emerald)' }}>
+                          {selectedAssignment.price ? `$${Number(selectedAssignment.price).toLocaleString()}` : 'Not Set'}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1924,7 +1963,14 @@ function AssignmentCard({ assignment, userRole, onOpen, onStatusChange, getProgr
       </div>
 
       <div className="card-footer">
-        <span className="card-effort-badge">{assignment.estimatedEffort || 'Medium'}</span>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <span className="card-effort-badge">{assignment.estimatedEffort || 'Medium'}</span>
+          {assignment.price && (
+            <span className="card-effort-badge" style={{ background: 'rgba(0, 255, 135, 0.1)', color: 'var(--color-emerald)', borderColor: 'rgba(0, 255, 135, 0.2)' }}>
+              ${Number(assignment.price).toLocaleString()}
+            </span>
+          )}
+        </div>
         {userRole === 'creator' ? (
           <div className="read-only-status-badge">
             <span>{assignment.status}</span>

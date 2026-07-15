@@ -335,7 +335,7 @@ app.get('/api/assignments', authenticate, (req, res) => {
 
 // Create new assignment (Admin & Creator Only)
 app.post('/api/assignments', authenticate, authorize(['admin', 'creator']), upload.array('files'), (req, res) => {
-  const { code, title, subject, description, dueDate, estimatedEffort, tasks, attachments } = req.body;
+  const { code, title, subject, description, dueDate, estimatedEffort, price, tasks, attachments } = req.body;
   const files = req.files || [];
   
   const assignments = readDB();
@@ -380,6 +380,7 @@ app.post('/api/assignments', authenticate, authorize(['admin', 'creator']), uplo
       text: typeof t === 'string' ? t : t.text,
       completed: typeof t === 'string' ? false : !!t.completed
     })),
+    price: price ? Number(price) : null,
     attachments: combinedAttachments,
     submissions: [],
     createdAt: new Date().toISOString()
@@ -406,7 +407,7 @@ app.put('/api/assignments/:id', authenticate, (req, res) => {
   // Writers and Admins can update status, tasks, and submissions
   // Creators and Admins can update core text fields (code, title, subject, description, dueDate)
   const isWriterAction = 'status' in updates || 'tasks' in updates || 'submissions' in updates;
-  const isCreatorAction = 'code' in updates || 'title' in updates || 'subject' in updates || 'description' in updates || 'dueDate' in updates || 'estimatedEffort' in updates;
+  const isCreatorAction = 'code' in updates || 'title' in updates || 'subject' in updates || 'description' in updates || 'dueDate' in updates || 'estimatedEffort' in updates || 'price' in updates;
 
   const role = req.user.role;
   if (role === 'writer' && isCreatorAction) {
@@ -577,7 +578,8 @@ Rules:
 4. "description": Write a thorough summary of the assignment rules, questions, constraints, and requirements in clear Markdown formatting.
 5. "dueDate": Extract the due date. Try your best to parse it into an ISO format (YYYY-MM-DD). If no due date is mentioned, return null.
 6. "estimatedEffort": Estimate difficulty (Easy, Medium, Hard) and hours needed (e.g. "Medium (6 hours)") based on complexity.
-7. "tasks": Create a checklist of practical sub-tasks/steps needed to complete this assignment (e.g. ["Research Topic", "Write draft", "Review guidelines", "Create final submission PDF"]).
+7. "price": Extract the price, payment amount, or payout rate of the assignment if mentioned (e.g., if it says "$150" or "150 USD" or "150", return 150. If no price is mentioned, return null).
+8. "tasks": Create a checklist of practical sub-tasks/steps needed to complete this assignment (e.g. ["Research Topic", "Write draft", "Review guidelines", "Create final submission PDF"]).
 
 You MUST respond with a JSON object conforming exactly to this schema:
 {
@@ -587,6 +589,7 @@ You MUST respond with a JSON object conforming exactly to this schema:
   "description": string,
   "dueDate": string or null,
   "estimatedEffort": string,
+  "price": number or null,
   "tasks": string[]
 }`;
 
@@ -599,12 +602,13 @@ You MUST respond with a JSON object conforming exactly to this schema:
         description: { type: "STRING" },
         dueDate: { type: "STRING", nullable: true },
         estimatedEffort: { type: "STRING" },
+        price: { type: "NUMBER", nullable: true },
         tasks: {
           type: "ARRAY",
           items: { type: "STRING" }
         }
       },
-      required: ["code", "title", "subject", "description", "dueDate", "estimatedEffort", "tasks"]
+      required: ["code", "title", "subject", "description", "dueDate", "estimatedEffort", "price", "tasks"]
     };
 
     const requestBody = {
